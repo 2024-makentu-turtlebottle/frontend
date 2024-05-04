@@ -1,0 +1,70 @@
+<div class="home">
+  <div class="navbar" [@navbarIn]="animationState">
+    <img class="logo" src="/assets/logo.png" alt="logo" />
+    <h1>Turtles' Bottle</h1>
+  </div>
+
+  <hr style="width: 90%; margin-left: 5%;" [@navbarIn]="animationState"/>
+
+  <div class="current-status" [@currentStateIn]="animationState">
+    <h2>當前狀態</h2>
+    <div class="good-posture" *ngIf="postureStatus === 'good'">
+      <mat-icon style="transform: scale(1.5)">mood</mat-icon>
+      <p>姿勢正常</p>
+    </div>
+    <div class="bad-posture" *ngIf="postureStatus === 'bad'">
+      <mat-icon style="transform: scale(1.5)">sentiment_dissatisfied</mat-icon>
+      <p>姿勢異常</p>
+    </div>
+  </div>
+
+  <div class="history">
+    <h2
+      *ngIf="doseBarChartConfigurations.chartConfiguration.labels!.length"
+      [@currentStateIn]="animationState"
+    >
+      異常次數
+    </h2>
+
+    <canvas
+      baseChart
+      [data]="doseBarChartConfigurations.chartConfiguration"
+      *ngIf="doseBarChartConfigurations.chartConfiguration.labels!.length"
+      [legend]="false"
+      [options]="doseBarChartConfigurations.chartOptions"
+      type="bar"
+      style="height: 8rem; width: 100%"
+      [@currentStateIn]="animationState"
+    ></canvas>
+
+    <h2
+      *ngIf="weightLineChartConfigurations.chartConfiguration.labels!.length"
+      [@currentStateIn]="animationState"
+    >
+      異常比例
+    </h2>
+
+    <canvas
+      *ngIf="weightLineChartConfigurations.chartConfiguration.labels!.length"
+      baseChart
+      [data]="weightLineChartConfigurations.chartConfiguration"
+      [options]="weightLineChartConfigurations.chartOptions"
+      [legend]="false"
+      type="line"
+      style="height: 10rem; width: 100%"
+      [@currentStateIn]="animationState"
+    >
+    </canvas>
+
+    <div
+      class="no-data-text"
+      *ngIf="
+        !doseBarChartConfigurations.chartConfiguration.labels!.length ||
+        !weightLineChartConfigurations.chartConfiguration.labels!.length
+      "
+    >
+      <mat-icon>warning</mat-icon>
+      <p>尚無資料</p>
+    </div>
+  </div>
+</div>
