@@ -1,6 +1,21 @@
 import { Component } from '@angular/core';
-import { BarChartConfiguration, LineChartConfiguration } from './home';
-import { animate, state, style, transition, trigger } from '@angular/animations';
+import {
+  BarChartConfiguration,
+  LineChartConfiguration,
+  TimedPosture,
+  TimedPostureResponse,
+} from './home';
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import { HttpClient } from '@angular/common/http';
+import { lastValueFrom } from 'rxjs';
+import { Time } from '@angular/common';
+import * as moment from 'moment';
 
 @Component({
   selector: 'app-home',
@@ -18,7 +33,19 @@ import { animate, state, style, transition, trigger } from '@angular/animations'
       state('2', style({ opacity: 1 })),
       transition('* => 2', animate('0.5s', style({ opacity: 1 }))),
     ]),
-  ]
+    trigger('dayButton', [
+      state('day', style({ backgroundColor: '#6933AD', color: '#eee' })),
+      state('min', style({ backgroundColor: '#eee', color: '#6933AD' })),
+      transition('day => min', animate('0.2s')),
+      transition('min => day', animate('0.2s')),
+    ]),
+    trigger('minButton', [
+      state('min', style({ backgroundColor: '#6933AD', color: '#eee' })),
+      state('day', style({ backgroundColor: '#eee', color: '#6933AD' })),
+      transition('day => min', animate('0.2s')),
+      transition('min => day', animate('0.2s')),
+    ]),
+  ],
 })
 export class HomeComponent {
   /**
@@ -32,6 +59,16 @@ export class HomeComponent {
   public animationState = 0;
 
   /**
+   * 包含時間的姿勢資料
+   */
+  private timedPostures: TimedPosture[] = [];
+
+  /**
+   * 時間範圍
+   */
+  public timeRange: 'day' | 'min' = 'min';
+
+  /**
    * 劑量長條圖資料
    */
   public doseBarChartConfigurations: BarChartConfiguration = {
@@ -41,6 +78,7 @@ export class HomeComponent {
     displayDataBarIndexes: [],
     chartConfiguration: {
       datasets: [],
+      labels: [],
     },
     chartOptions: {},
   };
@@ -57,11 +95,22 @@ export class HomeComponent {
     yMax: 0,
     chartConfiguration: {
       datasets: [],
+      labels: [],
     },
     chartOptions: {},
   };
 
-  ngOnInit(): void {
+  /**
+   * 是否正在載入
+   */
+  public loading: boolean = true;
+
+  constructor(private http: HttpClient) {}
+
+  async ngOnInit(): Promise<void> {
+    await this.getPostureData();
+    this.setChartConfigurations();
+
     setTimeout(() => {
       this.animationState++;
     }, 100);
@@ -69,9 +118,176 @@ export class HomeComponent {
     setTimeout(() => {
       this.animationState++;
     }, 200);
+  }
 
-    this.doseBarChartConfigurations.labels = ['5/1', '5/2', '5/3', '5/4'];
-    this.doseBarChartConfigurations.dataBars = [1, 2, 3, 4];
+  /**
+   * 取得姿勢資料
+   */
+  private async getPostureData(): Promise<void> {
+    this.loading = true;
+
+    const response = await lastValueFrom(
+      this.http.get<TimedPostureResponse>(
+        `https://tzuhsun.online/api/1.0/influxdb?time=${this.timeRange}`
+      )
+    );
+
+    this.timedPostures = response.data;
+
+    console.log(this.timedPostures);
+
+    for (const posture of this.timedPostures) {
+      posture.timestamp = new Date(posture.time);
+    }
+
+    this.loading = false;
+  }
+
+  /**
+   * 設定時間範圍
+   */
+  public async setTimeRange(timeRange: 'day' | 'min'): Promise<void> {
+    this.timeRange = timeRange;
+    this.animationState = 0;
+
+    await this.getPostureData();
+    this.setChartConfigurations();
+
+    setTimeout(() => {
+      this.animationState++;
+    }, 100);
+
+    setTimeout(() => {
+      this.animationState++;
+    }, 200);
+  }
+
+  /**
+   * 重設圖表設定
+   */
+  private resetChartConfigurations(): void {
+    this.doseBarChartConfigurations.labels = [];
+    this.doseBarChartConfigurations.dataBars = [];
+    this.weightLineChartConfigurations.labels = [];
+    this.weightLineChartConfigurations.dataPoints = [];
+
+    /**
+     * 劑量長條圖資料
+     */
+    this.doseBarChartConfigurations = {
+      labels: [],
+      dataBars: [],
+      displayLabelIndexes: [],
+      displayDataBarIndexes: [],
+      chartConfiguration: {
+        datasets: [],
+        labels: [],
+      },
+      chartOptions: {},
+    };
+
+    /**
+     * 體重表格資料
+     */
+    this.weightLineChartConfigurations = {
+      labels: [],
+      dataPoints: [],
+      displayLabelIndexes: [],
+      displayDataPointIndexes: [],
+      yMin: 0,
+      yMax: 0,
+      chartConfiguration: {
+        datasets: [],
+        labels: [],
+      },
+      chartOptions: {},
+    };
+  }
+
+  /**
+   * 設定圖表
+   */
+  private setChartConfigurations(): void {
+    this.resetChartConfigurations();
+
+    if (this.timedPostures.length === 0) {
+      return;
+    }
+
+    if (this.timeRange === 'day') {
+      // 取得一天前到現在，每四個小時的資料總和
+      let startingTime = moment().subtract(1, 'day');
+      const sixHours = moment.duration(6, 'hours');
+
+      for (let i = 0; i < 4; i++) {
+        const endTime = moment(startingTime).add(sixHours);
+
+        const postures = this.timedPostures.filter(
+          (posture) =>
+            moment(posture.timestamp!).isAfter(startingTime, 's') &&
+            moment(posture.timestamp!).isBefore(endTime, 's')
+        );
+
+        console.log(postures);
+
+        // 傾斜角度大於 30 度視為不良姿勢
+        const badPostures = postures.filter(
+          (posture) => posture.value > 30 && posture.value < 90
+        );
+
+        this.doseBarChartConfigurations.labels.push(
+          startingTime.format('HH:mm')
+        );
+        this.doseBarChartConfigurations.dataBars.push(badPostures.length);
+
+        this.weightLineChartConfigurations.labels.push(
+          startingTime.format('HH:mm')
+        );
+        this.weightLineChartConfigurations.dataPoints.push(
+          (badPostures.length / postures.length) * 100
+        );
+
+        startingTime = endTime;
+      }
+
+      console.log(this.doseBarChartConfigurations.labels);
+      console.log(this.doseBarChartConfigurations.dataBars);
+    }
+
+    if (this.timeRange === 'min') {
+      // 取得 15 分鐘前到現在，每 3 分鐘的資料總和
+      let startingTime = moment().subtract(15, 'minutes');
+      const threeMinutes = moment.duration(3, 'minutes');
+
+      for (let i = 0; i < 5; i++) {
+        const endTime = moment(startingTime).add(threeMinutes);
+        const postures = this.timedPostures.filter(
+          (posture) =>
+            moment(posture.timestamp!).isAfter(startingTime, 's') &&
+            moment(posture.timestamp!).isBefore(endTime, 's')
+        );
+
+        // 傾斜角度大於 30 度視為不良姿勢
+        const badPostures = postures.filter(
+          (posture) => posture.value > 30 && posture.value < 90
+        );
+
+        this.doseBarChartConfigurations.labels.push(
+          startingTime.format('HH:mm')
+        );
+        this.doseBarChartConfigurations.dataBars.push(badPostures.length);
+
+        this.weightLineChartConfigurations.labels.push(
+          startingTime.format('HH:mm')
+        );
+        this.weightLineChartConfigurations.dataPoints.push(
+          (badPostures.length / postures.length) * 100
+        );
+
+        startingTime = endTime;
+      }
+    }
+
     this.doseBarChartConfigurations.chartConfiguration = {
       labels: this.doseBarChartConfigurations.labels,
       datasets: [
@@ -121,9 +337,6 @@ export class HomeComponent {
         },
       },
     };
-
-    this.weightLineChartConfigurations.labels = ['5/1', '5/2', '5/3', '5/4', '5/1', '5/2', '5/3'];
-    this.weightLineChartConfigurations.dataPoints = [50, 60, 70, 80, 50, 60, 70];
 
     this.weightLineChartConfigurations.chartConfiguration = {
       labels: this.weightLineChartConfigurations.labels,

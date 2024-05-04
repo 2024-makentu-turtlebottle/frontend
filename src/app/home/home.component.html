@@ -1,4 +1,4 @@
-<div class="home">
+<div class="home" *ngIf="!loading">
   <div class="navbar" [@navbarIn]="animationState">
     <img class="logo" src="/assets/logo.png" alt="logo" />
     <h1>Turtles' Bottle</h1>
@@ -20,7 +20,6 @@
 
   <div class="history">
     <h2
-      *ngIf="doseBarChartConfigurations.chartConfiguration.labels!.length"
       [@currentStateIn]="animationState"
     >
       異常次數
@@ -33,7 +32,6 @@
       [legend]="false"
       [options]="doseBarChartConfigurations.chartOptions"
       type="bar"
-      style="height: 8rem; width: 100%"
       [@currentStateIn]="animationState"
     ></canvas>
 
@@ -62,9 +60,15 @@
         !doseBarChartConfigurations.chartConfiguration.labels!.length ||
         !weightLineChartConfigurations.chartConfiguration.labels!.length
       "
+      [@currentStateIn]="animationState"
     >
       <mat-icon>warning</mat-icon>
       <p>尚無資料</p>
+    </div>
+
+    <div class="buttons" [@currentStateIn]="animationState">
+      <button [@dayButton]="timeRange" (click)="setTimeRange('day')">1 天</button>
+      <button [@minButton]="timeRange" (click)="setTimeRange('min')">15 分鐘</button>
     </div>
   </div>
 </div>

@@ -29,7 +29,7 @@
     width: 100%;
 
     h2 {
-      margin: 20px 0 20px 20px;
+      margin: 10px 0 20px 20px;
       font-size: 20px;
     }
 
@@ -62,6 +62,25 @@
 
   .history {
     @extend .current-status;
+
+    .buttons {
+      width: 50%;
+      margin-left: 25%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+
+      button {
+        width: 50%;
+        border: none;
+        height: 100%;
+      }
+    }
 
     .no-data-text {
       display: flex;

@@ -1,6 +1,36 @@
 import { ChartConfiguration, ChartOptions } from 'chart.js';
 
 /**
+ * 姿勢資料回應
+ */
+export interface TimedPostureResponse {
+  /**
+   * 姿勢資料
+   */
+  data: TimedPosture[];
+}
+
+/**
+ * 包含時間的姿勢資料
+ */
+export interface TimedPosture {
+  /**
+   * 時間，為 ISO 格式
+   */
+  time: string;
+
+  /**
+   * 時間，為 Date 物件
+   */
+  timestamp?: Date;
+
+  /**
+   * 脖子傾斜的角度
+   */
+  value: number;
+}
+
+/**
  * 長條圖的資料
  */
 export interface BarChartConfiguration {
